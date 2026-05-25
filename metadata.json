@@ -1,0 +1,6 @@
+{
+  "name": "Video Downloader",
+  "description": "A simple video downloader from social media platforms with quality selection and direct save to gallery.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,167 @@
+package com.example
+
+import android.app.Application
+import android.app.DownloadManager
+import android.content.Context
+import android.net.Uri
+import android.os.Environment
+import android.util.Log
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.data.AppDatabase
+import com.example.data.DownloadItem
+import com.example.data.DownloadRepository
+import com.example.network.CobaltRequest
+import com.example.network.RetrofitInstance
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import java.io.File
+
+class DownloaderViewModel(application: Application) : AndroidViewModel(application) {
+    
+    private val repository: DownloadRepository
+    val downloadHistory: StateFlow<List<DownloadItem>>
+
+    private val _uiState = MutableStateFlow(DownloaderUiState())
+    val uiState: StateFlow<DownloaderUiState> = _uiState.asStateFlow()
+
+    init {
+        val database = AppDatabase.getDatabase(application)
+        repository = DownloadRepository(database.downloadDao())
+        downloadHistory = repository.allDownloads.stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            emptyList()
+        )
+    }
+
+    fun onUrlChange(url: String) {
+        _uiState.value = _uiState.value.copy(urlInput = url, error = null)
+    }
+
+    fun onQualityChange(quality: String) {
+        _uiState.value = _uiState.value.copy(selectedQuality = quality)
+    }
+
+    fun startDownload() {
+        val url = _uiState.value.urlInput
+        if (url.isBlank()) {
+            _uiState.value = _uiState.value.copy(error = "Please enter a valid URL")
+            return
+        }
+
+        _uiState.value = _uiState.value.copy(isLoading = true, error = null, successMessage = null)
+
+        viewModelScope.launch {
+            try {
+                val isMp3 = _uiState.value.selectedQuality == "MP3"
+                val response = RetrofitInstance.api.extractVideo(
+                    CobaltRequest(
+                        url = url,
+                        videoQuality = if (isMp3) "720" else _uiState.value.selectedQuality,
+                        isAudioOnly = isMp3
+                    )
+                )
+
+                if (response.status == "error") {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        error = "Failed to extract content: ${response.error?.code ?: "Unknown"}"
+                    )
+                    return@launch
+                }
+
+                val finalDownloadUrl = response.url
+                // Add an extension if filename doesn't have one
+                var fileName = response.filename ?: (if (isMp3) "audio_${System.currentTimeMillis()}.mp3" else "video_${System.currentTimeMillis()}.mp4")
+                if (!fileName.contains(".")) {
+                    fileName += if (isMp3) ".mp3" else ".mp4"
+                }
+
+                if (finalDownloadUrl != null) {
+                    enqueueDownloadManager(url, finalDownloadUrl, fileName, _uiState.value.selectedQuality)
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        urlInput = "",
+                        successMessage = "Download started. Check notifications!"
+                    )
+                } else {
+                    _uiState.value = _uiState.value.copy(isLoading = false, error = "Direct link not found")
+                }
+            } catch (e: Exception) {
+                Log.e("DownloaderViewModel", "Download error", e)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = "Error: ${e.message}"
+                )
+            }
+        }
+    }
+
+    fun clearMessages() {
+        _uiState.value = _uiState.value.copy(successMessage = null, error = null)
+    }
+
+    private suspend fun enqueueDownloadManager(originalUrl: String, downloadUrl: String, fileName: String, quality: String) {
+        val context = getApplication<Application>()
+        val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        val uri = Uri.parse(downloadUrl)
+        val isMp3 = quality == "MP3"
+        val directoryType = if (isMp3) Environment.DIRECTORY_MUSIC else Environment.DIRECTORY_MOVIES
+
+        val request = DownloadManager.Request(uri).apply {
+            setTitle(fileName)
+            setDescription(if (isMp3) "Downloading audio..." else "Downloading video...")
+            setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+            setDestinationInExternalPublicDir(directoryType, fileName)
+            setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI or DownloadManager.Request.NETWORK_MOBILE)
+        }
+
+        try {
+            downloadManager.enqueue(request)
+            
+            // Generate the anticipated local path
+            val directory = Environment.getExternalStoragePublicDirectory(directoryType)
+            val physicalFile = File(directory, fileName)
+
+            val item = DownloadItem(
+                originalUrl = originalUrl,
+                quality = quality,
+                status = "COMPLETED", // Simplified status for history logging
+                localUri = physicalFile.absolutePath
+            )
+            repository.insert(item)
+        } catch (e: Exception) {
+            Log.e("DownloaderViewModel", "DownloadManager error", e)
+            _uiState.value = _uiState.value.copy(error = "Failed to enqueue download: ${e.message}")
+        }
+    }
+
+    fun deleteHistoryItem(item: DownloadItem) {
+        viewModelScope.launch {
+            repository.deleteById(item.id)
+            try {
+                if (item.localUri != null) {
+                    val file = File(item.localUri)
+                    if (file.exists()) {
+                        file.delete()
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("DownloaderViewModel", "Delete file error", e)
+            }
+        }
+    }
+}
+
+data class DownloaderUiState(
+    val urlInput: String = "",
+    val selectedQuality: String = "1080",
+    val isLoading: Boolean = false,
+    val error: String? = null,
+    val successMessage: String? = null
+)
