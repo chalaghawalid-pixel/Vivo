@@ -59,18 +59,57 @@ class DownloaderViewModel(application: Application) : AndroidViewModel(applicati
         viewModelScope.launch {
             try {
                 val isMp3 = _uiState.value.selectedQuality == "MP3"
-                val response = RetrofitInstance.api.extractVideo(
-                    CobaltRequest(
-                        url = url,
-                        videoQuality = if (isMp3) "720" else _uiState.value.selectedQuality,
-                        isAudioOnly = isMp3
-                    )
+                val requestBody = CobaltRequest(
+                    url = url,
+                    videoQuality = if (isMp3) "720" else _uiState.value.selectedQuality,
+                    isAudioOnly = isMp3,
+                    audioFormat = "mp3"
                 )
+
+                val instances = listOf(
+                    "https://api.cobalt.tools/",
+                    "https://cobalt.meowing.de/",
+                    "https://cobalt.canine.tools/"
+                )
+
+                var response: com.example.network.CobaltResponse? = null
+                var lastError: Exception? = null
+
+                for (instance in instances) {
+                    try {
+                        Log.d("DownloaderViewModel", "Trying cobalt instance: $instance")
+                        val res = RetrofitInstance.api.extractVideo(instance, requestBody)
+                        if (res.status == "error") {
+                            Log.w("DownloaderViewModel", "Instance $instance returned error: ${res.error?.code}")
+                            response = res
+                            // If rate-limited or general error, try another instance
+                            if (res.error?.code == "rate-limit" || res.error?.code == "error") {
+                                continue
+                            } else {
+                                break
+                            }
+                        } else {
+                            response = res
+                            break
+                        }
+                    } catch (e: Exception) {
+                        Log.e("DownloaderViewModel", "Failed to extract from $instance", e)
+                        lastError = e
+                    }
+                }
+
+                if (response == null) {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        error = "Failed to extract content: ${lastError?.message ?: "Internet/Server Connection Failed"}"
+                    )
+                    return@launch
+                }
 
                 if (response.status == "error") {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        error = "Failed to extract content: ${response.error?.code ?: "Unknown"}"
+                        error = "Failed to extract content: ${response.error?.code ?: "Unknown Server Error"}"
                     )
                     return@launch
                 }
@@ -119,6 +158,8 @@ class DownloaderViewModel(application: Application) : AndroidViewModel(applicati
             setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
             setDestinationInExternalPublicDir(directoryType, fileName)
             setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI or DownloadManager.Request.NETWORK_MOBILE)
+            setAllowedOverMetered(true)
+            setAllowedOverRoaming(true)
         }
 
         try {
