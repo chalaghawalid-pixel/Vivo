@@ -24,7 +24,7 @@
             android:id="@+id/widget_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Video Downloader"
+            android:text="@string/widget_title"
             android:textColor="#FFFFFF"
             android:textSize="13sp"
             android:textStyle="bold"
@@ -35,7 +35,7 @@
             android:id="@+id/widget_subtitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Tap to download"
+            android:text="@string/widget_subtitle"
             android:textColor="#B0BEC5"
             android:textSize="10sp"
             android:gravity="center" />

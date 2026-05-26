@@ -50,7 +50,7 @@ class DownloaderViewModel(application: Application) : AndroidViewModel(applicati
     fun startDownload() {
         val url = _uiState.value.urlInput
         if (url.isBlank()) {
-            _uiState.value = _uiState.value.copy(error = "Please enter a valid URL")
+            _uiState.value = _uiState.value.copy(error = getApplication<Application>().getString(R.string.err_empty_url))
             return
         }
 

@@ -1,3 +1,14 @@
 <resources>
-    <string name="app_name">Video Downloader</string>
+    <string name="app_name">منزل الفيديوهات</string>
+    <string name="widget_title">منزل الفيديوهات</string>
+    <string name="widget_subtitle">اضغط للصق وتحميل الرابط فوراً</string>
+    <string name="title_app">تحميل الفيديوهات</string>
+    <string name="label_video_url">رابط الفيديو (يوتيوب، انستجرام ...)</string>
+    <string name="placeholder_url">أدخل الرابط هنا...</string>
+    <string name="label_format_quality">الصيغة / الجودة:</string>
+    <string name="btn_download">تحميل</string>
+    <string name="title_history">السجل</string>
+    <string name="label_no_history">لا توجد تنزيلات سابقة</string>
+    <string name="toast_pasted">تم لصق الرابط من الحافظة</string>
+    <string name="err_empty_url">الرجاء إدخال رابط صحيح</string>
 </resources>

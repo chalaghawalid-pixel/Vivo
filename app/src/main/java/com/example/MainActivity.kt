@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -75,7 +76,7 @@ class MainActivity : ComponentActivity() {
                         val text = clipData.getItemAt(0).text?.toString()?.trim() ?: ""
                         if (text.startsWith("http://") || text.startsWith("https://")) {
                             viewModel.onUrlChange(text)
-                            Toast.makeText(this, "Pasted URL from clipboard", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this, getString(R.string.toast_pasted), Toast.LENGTH_SHORT).show()
                         }
                     }
                 }
@@ -133,7 +134,7 @@ class MainActivity : ComponentActivity() {
                             TopAppBar(
                                 title = { 
                                     Text(
-                                        "Video Downloader",
+                                        stringResource(id = R.string.title_app),
                                         fontWeight = FontWeight.Bold,
                                         color = Color.White
                                     ) 
@@ -251,8 +252,8 @@ fun DownloaderScreen(
                 OutlinedTextField(
                     value = uiState.urlInput,
                     onValueChange = viewModel::onUrlChange,
-                    label = { Text("Video URL", color = Color.White.copy(alpha = 0.7f)) },
-                    placeholder = { Text("https://...", color = Color.White.copy(alpha = 0.4f)) },
+                    label = { Text(stringResource(id = R.string.label_video_url), color = Color.White.copy(alpha = 0.7f)) },
+                    placeholder = { Text(stringResource(id = R.string.placeholder_url), color = Color.White.copy(alpha = 0.4f)) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("url_input"),
@@ -277,7 +278,7 @@ fun DownloaderScreen(
                 }
 
                 Text(
-                    text = "Format / Quality:", 
+                    text = stringResource(id = R.string.label_format_quality), 
                     style = MaterialTheme.typography.titleSmall,
                     color = Color.White.copy(alpha = 0.8f)
                 )
@@ -337,7 +338,7 @@ fun DownloaderScreen(
                         Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(24.dp))
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            text = "DOWNLOAD",
+                            text = stringResource(id = R.string.btn_download),
                             fontWeight = FontWeight.ExtraBold,
                             letterSpacing = 1.sp
                         )
@@ -350,7 +351,7 @@ fun DownloaderScreen(
 
         // History Section
         Text(
-            text = "History",
+            text = stringResource(id = R.string.title_history),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = Color.White.copy(alpha = 0.9f),
@@ -371,7 +372,7 @@ fun DownloaderScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "No previous downloads",
+                            text = stringResource(id = R.string.label_no_history),
                             color = Color.White.copy(alpha = 0.5f)
                         )
                     }
