@@ -52,6 +52,39 @@ import java.util.Locale
 class MainActivity : ComponentActivity() {
     private val viewModel: DownloaderViewModel by viewModels()
 
+    override fun onResume() {
+        super.onResume()
+        checkIntentAndClipboard(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        checkIntentAndClipboard(intent)
+    }
+
+    private fun checkIntentAndClipboard(currIntent: Intent?) {
+        val fromWidget = currIntent?.getBooleanExtra("FROM_WIDGET", false) == true
+        if (fromWidget) {
+            currIntent.putExtra("FROM_WIDGET", false) // Reset to avoid double pasta on orientation changes
+            try {
+                val clipboardManager = getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                if (clipboardManager.hasPrimaryClip()) {
+                    val clipData = clipboardManager.primaryClip
+                    if (clipData != null && clipData.itemCount > 0) {
+                        val text = clipData.getItemAt(0).text?.toString()?.trim() ?: ""
+                        if (text.startsWith("http://") || text.startsWith("https://")) {
+                            viewModel.onUrlChange(text)
+                            Toast.makeText(this, "Pasted URL from clipboard", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                // Silently ignore clipboard or intent format issues
+            }
+        }
+    }
+
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
